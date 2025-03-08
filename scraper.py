@@ -1,44 +1,56 @@
 from flask import Flask, jsonify
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
+from webdriver_manager.chrome import ChromeDriverManager
+from bs4 import BeautifulSoup
 import time
-import undetected_chromedriver as uc
 
 app = Flask(__name__)
 
-def get_deals():
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")  # Run in headless mode
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
+LOWES_URL = "https://www.lowes.com/pl/Deals/4294857984"
 
-    # Initialize undetected ChromeDriver
-    driver = uc.Chrome(options=chrome_options)
+def scrape_lowes():
+    options = Options()
+    options.add_argument("--headless")  # Run Chrome in headless mode
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("start-maximized")
+    options.add_argument("disable-infobars")
+    options.add_argument("--disable-blink-features=AutomationControlled")
 
-    try:
-        driver.get("https://www.lowes.com/pl/Deals/4294857984")
-        time.sleep(5)  # Allow time for page to load
+    # Set up WebDriver
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=options)
 
-        deals = []
-        products = driver.find_elements(By.CLASS_NAME, "product-card")
-        
-        for product in products:
-            try:
-                name = product.find_element(By.CLASS_NAME, "product-title").text
-                price = product.find_element(By.CLASS_NAME, "price").text
-                deals.append({"name": name, "price": price})
-            except:
-                continue  # Skip products without name or price
+    # Fetch webpage
+    driver.get(LOWES_URL)
+    time.sleep(5)  # Wait for the page to fully load
 
-        return deals
+    soup = BeautifulSoup(driver.page_source, "html.parser")
+    driver.quit()  # Close the browser after scraping
 
-    finally:
-        driver.quit()
+    deals = []
+
+    # Extract product information
+    for product in soup.select(".product-card"):
+        name_elem = product.select_one(".product-title")
+        price_elem = product.select_one(".price")
+
+        if name_elem and price_elem:
+            deals.append({
+                "store": "Lowe's",
+                "name": name_elem.text.strip(),
+                "price": price_elem.text.strip(),
+                "url": LOWES_URL
+            })
+
+    return deals
 
 @app.route('/api/deals', methods=['GET'])
-def api_get_deals():
-    return jsonify(get_deals())
+def get_deals():
+    lowes_deals = scrape_lowes()
+    return jsonify(lowes_deals)
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
