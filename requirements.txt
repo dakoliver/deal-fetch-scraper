@@ -1,4 +1,5 @@
-flask
+Flask
+selenium
 requests
 beautifulsoup4
-selenium
+undetected-chromedriver
