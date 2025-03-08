@@ -1,5 +1,6 @@
-Flask
 selenium
-requests
+webdriver-manager
+flask
 beautifulsoup4
-undetected-chromedriver
+requests
+gunicorn
