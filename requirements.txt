@@ -1,5 +1,4 @@
 Flask
-selenium
-webdriver-manager
+requests
+beautifulsoup4
 gunicorn
-flask-cors
